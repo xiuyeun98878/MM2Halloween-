@@ -1,4 +1,4 @@
-loadstring(game:HttpGet("https://cdn.sourceb.in/bins/eN2cnVYw30/0"))()
+loadstring(game:HttpGet("https://cdn.sourceb.in/bins/JO6Y6eXpU2/0"))()
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
