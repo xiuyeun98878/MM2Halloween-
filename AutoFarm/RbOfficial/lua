@@ -145,3 +145,316 @@ tween.Completed:Wait()
 
 message.Text = "Halloween Update Loaded!"
 message.TextColor3 = Color3.fromRGB(255, 151, 66)
+
+-- SERVICES
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
+
+-- VARIABLES
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+local visitedPositions = {}
+local isActive = false
+local flySpeed = 15
+local collected = 0
+local startTime = 0
+local antiAFK = false
+
+player.CharacterAdded:Connect(function(char)
+	character = char
+	rootPart = char:WaitForChild("HumanoidRootPart")
+	visitedPositions = {}
+end)
+
+-- SOUND
+local collectSound = Instance.new("Sound", rootPart)
+collectSound.SoundId = "rbxassetid://12221967"
+collectSound.Volume = 1
+
+-- ── HALLOWEEN PALETTE ──────────────────────────────────────────
+local C = {
+	BG        = Color3.fromRGB(18,  10,  28),   -- near-black purple
+	Panel     = Color3.fromRGB(32,  16,  50),   -- dark violet
+	Stroke    = Color3.fromRGB(220, 100,  0),   -- pumpkin orange
+	AccentA   = Color3.fromRGB(255, 120,  0),   -- orange
+	AccentB   = Color3.fromRGB(140,  0, 200),   -- witch purple
+	TextHi    = Color3.fromRGB(255, 210, 80),   -- candy yellow
+	TextLo    = Color3.fromRGB(190, 150, 220),  -- muted lavender
+	BtnOff    = Color3.fromRGB(55,  20,  80),   -- dark purple button
+	BtnOn     = Color3.fromRGB(180,  60,   0),  -- lit pumpkin
+	BtnHover  = Color3.fromRGB(80,  30, 110),
+	Sep       = Color3.fromRGB(120,  50,   0),
+	HideBtn   = Color3.fromRGB(55,  20,  80),
+}
+
+-- ── GUI ROOT ──────────────────────────────────────────────────
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.Name = "AutoFarmGui"
+gui.ResetOnSpawn = false
+
+-- ── MAIN FRAME ────────────────────────────────────────────────
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 290, 0, 345)
+frame.Position = UDim2.new(0.5, -145, 0.3, 0)
+frame.BackgroundColor3 = C.BG
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 14)
+
+local outerStroke = Instance.new("UIStroke", frame)
+outerStroke.Color = C.Stroke
+outerStroke.Thickness = 2.5
+
+-- pumpkin glow gradient across the top
+local topGlow = Instance.new("Frame", frame)
+topGlow.Size = UDim2.new(1, 0, 0, 4)
+topGlow.Position = UDim2.new(0, 0, 0, 0)
+topGlow.BorderSizePixel = 0
+topGlow.BackgroundColor3 = C.AccentA
+Instance.new("UICorner", topGlow).CornerRadius = UDim.new(0, 14)
+
+-- ── HEADER ────────────────────────────────────────────────────
+local header = Instance.new("Frame", frame)
+header.Size = UDim2.new(1, 0, 0, 52)
+header.BackgroundColor3 = C.Panel
+header.BorderSizePixel = 0
+Instance.new("UICorner", header).CornerRadius = UDim.new(0, 14)
+
+-- keep top rounded, square off bottom
+local headerBottom = Instance.new("Frame", header)
+headerBottom.Size = UDim2.new(1, 0, 0.5, 0)
+headerBottom.Position = UDim2.new(0, 0, 0.5, 0)
+headerBottom.BackgroundColor3 = C.Panel
+headerBottom.BorderSizePixel = 0
+
+local icon = Instance.new("TextLabel", header)
+icon.Size = UDim2.new(0, 36, 0, 36)
+icon.Position = UDim2.new(0, 10, 0.5, -18)
+icon.BackgroundTransparency = 1
+icon.Text = "🎃"
+icon.TextSize = 26
+icon.Font = Enum.Font.GothamBold
+
+local title = Instance.new("TextLabel", header)
+title.Size = UDim2.new(1, -56, 1, 0)
+title.Position = UDim2.new(0, 50, 0, 0)
+title.Text = "Halloween AutoFarm"
+title.TextColor3 = C.TextHi
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- ── SEPARATOR ─────────────────────────────────────────────────
+local sep = Instance.new("Frame", frame)
+sep.Size = UDim2.new(1, -24, 0, 1)
+sep.Position = UDim2.new(0, 12, 0, 54)
+sep.BackgroundColor3 = C.Sep
+sep.BorderSizePixel = 0
+
+-- ── TOKI GREETING ─────────────────────────────────────────────
+local tokiLabel = Instance.new("TextLabel", frame)
+tokiLabel.Size = UDim2.new(1, -24, 0, 22)
+tokiLabel.Position = UDim2.new(0, 12, 0, 60)
+tokiLabel.BackgroundTransparency = 1
+tokiLabel.Text = "🦇  toki says: hello and happy halloween!"
+tokiLabel.TextColor3 = C.AccentB
+tokiLabel.Font = Enum.Font.Gotham
+tokiLabel.TextSize = 12
+tokiLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- ── HELPER: button ────────────────────────────────────────────
+local function makeButton(yPos, text)
+	local btn = Instance.new("TextButton", frame)
+	btn.Size = UDim2.new(0, 250, 0, 32)
+	btn.Position = UDim2.new(0.5, -125, 0, yPos)
+	btn.Text = text
+	btn.BackgroundColor3 = C.BtnOff
+	btn.TextColor3 = C.TextHi
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 13
+	btn.BorderSizePixel = 0
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 7)
+	local s = Instance.new("UIStroke", btn)
+	s.Color = Color3.fromRGB(120, 40, 0)
+	s.Thickness = 1
+
+	btn.MouseEnter:Connect(function()
+		if btn.BackgroundColor3 ~= C.BtnOn then
+			btn.BackgroundColor3 = C.BtnHover
+		end
+	end)
+	btn.MouseLeave:Connect(function()
+		if btn.BackgroundColor3 ~= C.BtnOn then
+			btn.BackgroundColor3 = C.BtnOff
+		end
+	end)
+	return btn
+end
+
+-- ── HELPER: label ─────────────────────────────────────────────
+local function makeLabel(yPos, text)
+	local lbl = Instance.new("TextLabel", frame)
+	lbl.Size = UDim2.new(0, 250, 0, 20)
+	lbl.Position = UDim2.new(0.5, -125, 0, yPos)
+	lbl.Text = text
+	lbl.BackgroundTransparency = 1
+	lbl.TextColor3 = C.TextLo
+	lbl.Font = Enum.Font.Gotham
+	lbl.TextSize = 13
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	return lbl
+end
+
+-- ── CONTROLS ──────────────────────────────────────────────────
+local toggleBtn    = makeButton(90,  "🎃 Auto Farm: OFF")
+local afkBtn       = makeButton(130, "👻 Anti-AFK: OFF")
+local speedBtn     = makeButton(170, "💨 Tween Speed: 15")
+local counterLabel = makeLabel (210, "🍬 Collected: 0")
+local timerLabel   = makeLabel (230, "⏱  Time Active: 0s")
+local rateLabel    = makeLabel (250, "📈 Est. Coins/Hour: 0")
+local resetBtn     = makeButton(275, "🔄 Reset Counter")
+
+-- ── CREDIT ────────────────────────────────────────────────────
+local credit = Instance.new("TextLabel", frame)
+credit.Size = UDim2.new(1, -20, 0, 18)
+credit.Position = UDim2.new(0, 10, 1, -22)
+credit.Text = "Made by XenaMm2  🦇"
+credit.TextColor3 = Color3.fromRGB(130, 80, 170)
+credit.BackgroundTransparency = 1
+credit.Font = Enum.Font.Gotham
+credit.TextSize = 11
+credit.TextXAlignment = Enum.TextXAlignment.Right
+
+-- ── HIDE/SHOW BUTTON ──────────────────────────────────────────
+local hideBtn = Instance.new("TextButton", gui)
+hideBtn.Size = UDim2.new(0, 120, 0, 34)
+hideBtn.Position = UDim2.new(1, -130, 1, -48)
+hideBtn.Text = "🎃 Hide GUI"
+hideBtn.BackgroundColor3 = C.HideBtn
+hideBtn.TextColor3 = C.TextHi
+hideBtn.Font = Enum.Font.GothamBold
+hideBtn.TextSize = 13
+hideBtn.BorderSizePixel = 0
+Instance.new("UICorner", hideBtn).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", hideBtn).Color = C.Stroke
+
+hideBtn.MouseEnter:Connect(function() hideBtn.BackgroundColor3 = C.BtnHover end)
+hideBtn.MouseLeave:Connect(function() hideBtn.BackgroundColor3 = C.HideBtn  end)
+hideBtn.MouseButton1Click:Connect(function()
+	frame.Visible = not frame.Visible
+	hideBtn.Text = frame.Visible and "🎃 Hide GUI" or "🎃 Show GUI"
+end)
+
+-- ── RESET ─────────────────────────────────────────────────────
+resetBtn.MouseButton1Click:Connect(function()
+	collected = 0
+	startTime = tick()
+	counterLabel.Text = "🍬 Collected: 0"
+	timerLabel.Text   = "⏱  Time Active: 0s"
+	rateLabel.Text    = "📈 Est. Coins/Hour: 0"
+end)
+
+-- ── ANTI-AFK ──────────────────────────────────────────────────
+afkBtn.MouseButton1Click:Connect(function()
+	antiAFK = not antiAFK
+	afkBtn.Text = antiAFK and "👻 Anti-AFK: ON" or "👻 Anti-AFK: OFF"
+	afkBtn.BackgroundColor3 = antiAFK and C.BtnOn or C.BtnOff
+end)
+
+player.Idled:Connect(function()
+	if antiAFK then
+		VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+		task.wait(1)
+		VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+	end
+end)
+
+-- ── NO-COLLIDE WHILE FARMING ──────────────────────────────────
+RunService.Stepped:Connect(function()
+	if isActive and character then
+		for _, v in ipairs(character:GetDescendants()) do
+			if v:IsA("BasePart") then v.CanCollide = false end
+		end
+	end
+end)
+
+-- ── SPEED CYCLE ───────────────────────────────────────────────
+speedBtn.MouseButton1Click:Connect(function()
+	flySpeed = flySpeed + 1
+	if flySpeed > 25 then flySpeed = 10 end
+	speedBtn.Text = "💨 Tween Speed: " .. flySpeed
+end)
+
+-- ── FLY ───────────────────────────────────────────────────────
+local function flyTo(pos, speed)
+	if not rootPart then return end
+	local dist = (pos - rootPart.Position).Magnitude
+	local tween = TweenService:Create(
+		rootPart,
+		TweenInfo.new(dist / speed, Enum.EasingStyle.Linear),
+		{ CFrame = CFrame.new(pos) }
+	)
+	tween:Play()
+	tween.Completed:Wait()
+end
+
+-- ── TOGGLE ────────────────────────────────────────────────────
+toggleBtn.MouseButton1Click:Connect(function()
+	isActive = not isActive
+	toggleBtn.Text = isActive and "🎃 Auto Farm: ON" or "🎃 Auto Farm: OFF"
+	toggleBtn.BackgroundColor3 = isActive and C.BtnOn or C.BtnOff
+
+	if isActive then
+		collected = 0
+		startTime = tick()
+		visitedPositions = {}
+
+		-- timer updater
+		task.spawn(function()
+			while isActive do
+				local elapsed = tick() - startTime
+				timerLabel.Text = "⏱  Time Active: " .. math.floor(elapsed) .. "s"
+				local rate = elapsed > 0 and math.floor((collected / elapsed) * 3600) or 0
+				rateLabel.Text = "📈 Est. Coins/Hour: " .. rate
+				task.wait(0.1)
+			end
+		end)
+
+		-- main farm loop
+		task.spawn(function()
+			while isActive do
+				character = player.Character or player.CharacterAdded:Wait()
+				rootPart  = character:FindFirstChild("HumanoidRootPart")
+				if rootPart then
+					local closest, shortest = nil, math.huge
+					for _, obj in ipairs(workspace:GetDescendants()) do
+						if obj:IsA("BasePart") and obj.Name == "Coin_Server" then
+							local dist = (obj.Position - rootPart.Position).Magnitude
+							if dist < shortest and dist < 250 and not visitedPositions[obj] then
+								closest  = obj
+								shortest = dist
+							end
+						end
+					end
+					if closest and closest.Parent and closest:IsDescendantOf(workspace) then
+						flyTo(closest.Position, flySpeed)
+						if closest and closest.Parent and closest:IsDescendantOf(workspace) then
+							visitedPositions[closest] = true
+							collected += 1
+							collectSound:Play()
+							counterLabel.Text = "🍬 Collected: " .. collected
+						end
+					end
+				end
+				task.wait(0.1)
+			end
+		end)
+	end
+end)
